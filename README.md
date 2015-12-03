@@ -19,6 +19,6 @@ Installing the plugin is really simple:
 
 1. Create a taxonomy and choose as vocabulary type "DataTXT entity extraction"
 2. Add this taxonomy to the content type you want to tag with Dandelion matched entities
-3. From now on on this content type you will have the "find related concepts" button, that let you automatically tag the content with Dandelion concepts based on your vocabulary 
+3. From now on on this content type you will have the "find related concepts" button, that let you automatically tag the content with Dandelion concepts extracted from the main body of the content 
 4. Enjoy!
 
