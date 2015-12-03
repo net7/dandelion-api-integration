@@ -22,3 +22,6 @@ Installing the plugin is really simple:
 3. From now on on this content type you will have the "find related concepts" button, that let you automatically tag the content with Dandelion concepts extracted from the main body of the content 
 4. Enjoy!
 
+# Advanced config
+
+If you want to change the confidence score for classification and nex, or if you just want to activate the debug mode, there's a custom admin form to do that. You can find it <drupal_website_url>/admin/config/datatxt_api_integration/preferences. There's a "min score" field in both cases, and a dataTXT debug mode checkbox.
