@@ -1,0 +1,541 @@
+<?php
+
+/**
+ * @file
+ * Install, and uninstall functions for the DataTxt API Integration module.
+ */
+
+/**
+ * Implements hook_field_schema().
+ */
+function datatxt_api_integration_schema() {
+
+  $schema['datatxt_taxonomy_vocabulary'] = array(
+    'description' => 'DataTXT API integration taxonomy vocabulary table.',
+    'fields' => array(
+      'did' => array(
+        'description' => 'Primary Key: Unique ID.',
+        'type' => 'serial',
+        'not null' => TRUE,
+        'unsigned' => TRUE,
+      ),
+      'vid' => array(
+        'description' => 'Foreign Key to taxonomy_vocabulary vid.',
+        'type' => 'int',
+        'length' => 11,
+        'not null' => TRUE,
+      ),
+      'datatxt_id' => array(
+        'description' => 'dataTXT id.',
+        'type' => 'varchar',
+        'length' => 36,
+        'not null' => FALSE,
+      ),
+      'language' => array(
+        'description' => 'Vocabulary language',
+        'type' => 'varchar',
+        'length' => 12,
+        'not null' => FALSE,
+      ),
+      'modified' => array(
+        'description' => 'Creation date.',
+        'type' => 'int',
+        'not null' => TRUE,
+      ),
+    ),
+    'primary key' => array('did'),
+    'unique keys' => array(
+      'datatxt_id' => array('datatxt_id'),
+    ),
+    'foreign keys' => array(
+      'fk_vid' => array(
+        'table' => 'taxonomy_vocabulary',
+        'columns' => array('vid' => 'vid'),
+      ),
+    ),
+  );
+
+  $schema['datatxt_taxonomy_term'] = array(
+    'description' => 'DataTXT API integration taxonomy term table.',
+    'fields' => array(
+      'did' => array(
+        'description' => 'Primary Key: Unique ID.',
+        'type' => 'serial',
+        'not null' => TRUE,
+        'unsigned' => TRUE,
+      ),
+      'tid' => array(
+        'description' => 'Foreign Key to taxonomy_term_data tid.',
+        'type' => 'int',
+        'length' => 11,
+        'not null' => TRUE,
+      ),
+      'vid' => array(
+        'description' => 'Foreign Key to taxonomy_vocabulary vid.',
+        'type' => 'int',
+        'length' => 11,
+        'not null' => TRUE,
+      ),
+      'topic' => array(
+        'description' => 'Datasource URL',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+      ),
+      'score' => array(
+        'description' => 'Source relevance: 0.0 to 1.0',
+        'type' => 'float',
+        'not null' => TRUE,
+      ),
+      'language' => array(
+        'description' => 'Term language',
+        'type' => 'varchar',
+        'length' => 12,
+        'not null' => TRUE,
+        'default' => 'und',
+      ),
+      'modified' => array(
+        'description' => 'Creation date.',
+        'type' => 'int',
+        'not null' => TRUE,
+      ),
+    ),
+    'primary key' => array('did'),
+    'foreign keys' => array(
+      'fk_vid' => array(
+        'table' => 'taxonomy_vocabulary',
+        'columns' => array('vid' => 'vid'),
+      ),
+      'fk_tid' => array(
+        'table' => 'taxonomy_term_data',
+        'columns' => array('tid' => 'tid'),
+      ),
+    ),
+  );
+
+  return $schema;
+}
+
+/**
+ * Creation of tables "datatxt_taxonomy_vocabulary" and "datatxt_taxonomy_term".
+ */
+function datatxt_api_integration_update_7001() {
+  $schema['datatxt_taxonomy_vocabulary'] = array(
+    'description' => 'DataTXT API integration taxonomy vocabulary table.',
+    'fields' => array(
+      'did' => array(
+        'description' => 'Primary Key: Unique ID.',
+        'type' => 'serial',
+        'not null' => TRUE,
+        'unsigned' => TRUE,
+      ),
+      'vid' => array(
+        'description' => 'Foreign Key to taxonomy_vocabulary vid.',
+        'type' => 'int',
+        'length' => 11,
+        'not null' => TRUE,
+      ),
+      'datatxt_id' => array(
+        'description' => 'dataTXT id.',
+        'type' => 'varchar',
+        'length' => 32,
+        'not null' => FALSE,
+      ),
+      'language' => array(
+        'description' => 'Vocabulary language',
+        'type' => 'varchar',
+        'length' => 12,
+        'not null' => FALSE,
+      ),
+      'modified' => array(
+        'description' => 'Creation date.',
+        'type' => 'int',
+        'not null' => TRUE,
+      ),
+    ),
+    'primary key' => array('did'),
+    'unique keys' => array(
+      'datatxt_id' => array('datatxt_id'),
+    ),
+    'foreign keys' => array(
+      'fk_vid' => array(
+        'table' => 'taxonomy_vocabulary',
+        'columns' => array('vid' => 'vid'),
+      ),
+    ),
+  );
+
+  $schema['datatxt_taxonomy_term'] = array(
+    'description' => 'DataTXT API integration taxonomy term table.',
+    'fields' => array(
+      'did' => array(
+        'description' => 'Primary Key: Unique ID.',
+        'type' => 'serial',
+        'not null' => TRUE,
+        'unsigned' => TRUE,
+      ),
+      'tid' => array(
+        'description' => 'Foreign Key to taxonomy_term_data tid.',
+        'type' => 'int',
+        'length' => 11,
+        'not null' => TRUE,
+      ),
+      'vid' => array(
+        'description' => 'Foreign Key to taxonomy_vocabulary vid.',
+        'type' => 'int',
+        'length' => 11,
+        'not null' => TRUE,
+      ),
+      'topic' => array(
+        'description' => 'Datasource URL',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+      ),
+      'score' => array(
+        'description' => 'Source relevance: 0.0 to 1.0',
+        'type' => 'float',
+        'not null' => TRUE,
+      ),
+      'language' => array(
+        'description' => 'Term language',
+        'type' => 'varchar',
+        'length' => 12,
+        'not null' => TRUE,
+        'default' => 'und',
+      ),
+      'modified' => array(
+        'description' => 'Creation date.',
+        'type' => 'int',
+        'not null' => TRUE,
+      ),
+    ),
+    'primary key' => array('did'),
+    'foreign keys' => array(
+      'fk_vid' => array(
+        'table' => 'taxonomy_vocabulary',
+        'columns' => array('vid' => 'vid'),
+      ),
+      'fk_tid' => array(
+        'table' => 'taxonomy_term_data',
+        'columns' => array('tid' => 'tid'),
+      ),
+    ),
+  );
+  db_create_table('datatxt_taxonomy_vocabulary', $schema['datatxt_taxonomy_vocabulary']);
+  db_create_table('datatxt_taxonomy_term', $schema['datatxt_taxonomy_term']);
+}
+
+/**
+ * Creation of tables "datatxt_entity_vocabulary" and "datatxt_entity_term".
+ */
+function datatxt_api_integration_update_7002() {
+
+  $schema['datatxt_entity_vocabulary'] = array(
+    'description' => 'DataTXT API integration entity vocabulary table.',
+    'fields' => array(
+      'did' => array(
+        'description' => 'Primary Key: Unique ID.',
+        'type' => 'serial',
+        'not null' => TRUE,
+        'unsigned' => TRUE,
+      ),
+      'vid' => array(
+        'description' => 'Foreign Key to taxonomy_vocabulary vid.',
+        'type' => 'int',
+        'length' => 11,
+        'not null' => TRUE,
+      ),
+      'language' => array(
+        'description' => 'Vocabulary language',
+        'type' => 'varchar',
+        'length' => 12,
+        'not null' => FALSE,
+      ),
+      'modified' => array(
+        'description' => 'Creation date.',
+        'type' => 'int',
+        'not null' => TRUE,
+      ),
+    ),
+    'primary key' => array('did'),
+    'foreign keys' => array(
+      'fk_vid' => array(
+        'table' => 'taxonomy_vocabulary',
+        'columns' => array('vid' => 'vid'),
+      ),
+    ),
+  );
+
+  $schema['datatxt_entity_term'] = array(
+    'description' => 'DataTXT API integration entity term table.',
+    'fields' => array(
+      'did' => array(
+        'description' => 'Primary Key: Unique ID.',
+        'type' => 'serial',
+        'not null' => TRUE,
+        'unsigned' => TRUE,
+      ),
+      'tid' => array(
+        'description' => 'Foreign Key to taxonomy_term_data tid.',
+        'type' => 'int',
+        'length' => 11,
+        'not null' => TRUE,
+      ),
+      'vid' => array(
+        'description' => 'Foreign Key to taxonomy_vocabulary vid.',
+        'type' => 'int',
+        'length' => 11,
+        'not null' => TRUE,
+      ),
+      'category' => array(
+        'description' => 'Term category',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+      ),
+      'topic' => array(
+        'description' => 'Datasource URL',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+      ),
+      'language' => array(
+        'description' => 'Term language',
+        'type' => 'varchar',
+        'length' => 12,
+        'not null' => TRUE,
+        'default' => 'und',
+      ),
+      'modified' => array(
+        'description' => 'Creation date.',
+        'type' => 'int',
+        'not null' => TRUE,
+      ),
+    ),
+    'primary key' => array('did'),
+    'foreign keys' => array(
+      'fk_vid' => array(
+        'table' => 'taxonomy_vocabulary',
+        'columns' => array('vid' => 'vid'),
+      ),
+      'fk_tid' => array(
+        'table' => 'taxonomy_term_data',
+        'columns' => array('tid' => 'tid'),
+      ),
+    ),
+  );
+
+  db_create_table('datatxt_entity_vocabulary', $schema['datatxt_entity_vocabulary']);
+  db_create_table('datatxt_entity_term', $schema['datatxt_entity_term']);
+}
+
+/**
+ * Creation of tables "datatxt_user_interests_vocabulary" and "datatxt_user_interests_term".
+ */
+function datatxt_api_integration_update_7004() {
+
+  $schema['datatxt_user_interests_vocabulary'] = array(
+    'description' => 'DataTXT API integration user interests vocabulary table.',
+    'fields' => array(
+      'did' => array(
+        'description' => 'Primary Key: Unique ID.',
+        'type' => 'serial',
+        'not null' => TRUE,
+        'unsigned' => TRUE,
+      ),
+      'vid' => array(
+        'description' => 'Foreign Key to taxonomy_vocabulary vid.',
+        'type' => 'int',
+        'length' => 11,
+        'not null' => TRUE,
+      ),
+      'datatxt_id' => array(
+        'description' => 'dataTXT id.',
+        'type' => 'varchar',
+        'length' => 36,
+        'not null' => FALSE,
+      ),
+      'language' => array(
+        'description' => 'Vocabulary language',
+        'type' => 'varchar',
+        'length' => 12,
+        'not null' => FALSE,
+      ),
+      'modified' => array(
+        'description' => 'Creation date.',
+        'type' => 'int',
+        'not null' => TRUE,
+      ),
+    ),
+    'primary key' => array('did'),
+    'unique keys' => array(
+      'datatxt_id' => array('datatxt_id'),
+    ),
+    'foreign keys' => array(
+      'fk_vid' => array(
+        'table' => 'taxonomy_vocabulary',
+        'columns' => array('vid' => 'vid'),
+      ),
+    ),
+  );
+
+  $schema['datatxt_user_interests_term'] = array(
+    'description' => 'DataTXT API integration user interests term table.',
+    'fields' => array(
+      'did' => array(
+        'description' => 'Primary Key: Unique ID.',
+        'type' => 'serial',
+        'not null' => TRUE,
+        'unsigned' => TRUE,
+      ),
+      'tid' => array(
+        'description' => 'Foreign Key to taxonomy_term_data tid.',
+        'type' => 'int',
+        'length' => 11,
+        'not null' => TRUE,
+      ),
+      'vid' => array(
+        'description' => 'Foreign Key to taxonomy_vocabulary vid.',
+        'type' => 'int',
+        'length' => 11,
+        'not null' => TRUE,
+      ),
+      'topic' => array(
+        'description' => 'Datasource URL',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+      ),
+      'score' => array(
+        'description' => 'Source relevance: 0.0 to 1.0',
+        'type' => 'float',
+        'not null' => TRUE,
+      ),
+      'language' => array(
+        'description' => 'Term language',
+        'type' => 'varchar',
+        'length' => 12,
+        'not null' => TRUE,
+        'default' => 'und',
+      ),
+      'modified' => array(
+        'description' => 'Creation date.',
+        'type' => 'int',
+        'not null' => TRUE,
+      ),
+    ),
+    'primary key' => array('did'),
+    'foreign keys' => array(
+      'fk_vid' => array(
+        'table' => 'taxonomy_vocabulary',
+        'columns' => array('vid' => 'vid'),
+      ),
+      'fk_tid' => array(
+        'table' => 'taxonomy_term_data',
+        'columns' => array('tid' => 'tid'),
+      ),
+      'fk_uid' => array(
+        'table' => 'users',
+        'columns' => array('uid' => 'uid'),
+      ),
+    ),
+  );
+
+  db_create_table('datatxt_user_interests_vocabulary', $schema['datatxt_user_interests_vocabulary']);
+  db_create_table('datatxt_user_interests_term', $schema['datatxt_user_interests_term']);
+}
+
+/**
+ * Creation of table "datatxt_user_articles".
+ */
+function datatxt_api_integration_update_7005() {
+
+  $schema['datatxt_user_articles'] = array(
+    'description' => 'DataTXT API integration user interests vocabulary table.',
+    'fields' => array(
+      'did' => array(
+        'description' => 'Primary Key: Unique ID.',
+        'type' => 'serial',
+        'not null' => TRUE,
+        'unsigned' => TRUE,
+      ),
+      'nid' => array(
+        'description' => 'Foreign Key to node article nid.',
+        'type' => 'int',
+        'length' => 11,
+        'not null' => TRUE,
+      ),
+      'uid' => array(
+        'description' => 'Foreign Key to user uid.',
+        'type' => 'int',
+        'length' => 11,
+        'not null' => TRUE,
+      ),
+      'score' => array(
+        'description' => 'Source relevance: 0.0 to 1.0',
+        'type' => 'float',
+        'not null' => TRUE,
+      ),
+      'modified' => array(
+        'description' => 'Creation date.',
+        'type' => 'int',
+        'not null' => TRUE,
+      ),
+    ),
+    'primary key' => array('did'),
+    'unique keys' => array(
+      'datatxt_id' => array('nid', 'uid'),
+    ),
+    'foreign keys' => array(
+      'fk_nid' => array(
+        'table' => 'node',
+        'columns' => array('nid' => 'nid'),
+      ),
+      'fk_uid' => array(
+        'table' => 'users',
+        'columns' => array('uid' => 'uid'),
+      ),
+    ),
+  );
+
+  db_create_table('datatxt_user_articles', $schema['datatxt_user_articles']);
+}
+
+/**
+ * Implements hook_install().
+ */
+function datatxt_api_integration_install() {
+  variable_set('datatxt_app_id', '');
+  variable_set('datatxt_app_key', '');
+  variable_set('datatxt_api_endpoint', DATATXT_DEFAULT_ENDPOINT);
+  variable_set('datatxt_debug_mode', FALSE);
+  variable_set('datatxt_classification_min_score', 0.5);
+  variable_set('datatxt_classification_vocabulary', '');
+  variable_set('datatxt_classification_model_update', 0);
+  variable_set('datatxt_classification_vocabulary_changed', array());
+  variable_set('datatxt_entity_extraction_min_score', 0.5);
+  variable_set('datatxt_entity_extraction_vocabulary', '');
+  variable_set('datatxt_user_interests_vocabulary', '');
+  variable_set('datatxt_user_interest_model_update', 0);
+  variable_set('datatxt_user_interest_vocabulary_changed', array());
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function datatxt_api_integration_uninstall() {
+  variable_del('datatxt_app_id');
+  variable_del('datatxt_app_key');
+  variable_del('datatxt_api_endpoint');
+  variable_del('datatxt_debug_mode');
+  variable_del('datatxt_classification_min_score');
+  variable_del('datatxt_classification_vocabulary');
+  variable_del('datatxt_classification_model_update');
+  variable_del('datatxt_classification_vocabulary_changed');
+  variable_del('datatxt_entity_extraction_min_score');
+  variable_del('datatxt_entity_extraction_vocabulary');
+  variable_del('datatxt_user_interests_vocabulary');
+  variable_del('datatxt_user_interest_model_update');
+  variable_del('datatxt_user_interest_vocabulary_changed');
+}

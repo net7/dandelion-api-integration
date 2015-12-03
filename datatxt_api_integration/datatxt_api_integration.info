@@ -1,0 +1,16 @@
+name = dataTXT integration
+description = dataTXT integration
+core = 7.x
+version = "7.x-1.0beta1"
+package = dataTXT
+configure = admin/config/datatxt_api_integration
+dependencies[] = taxonomy
+files[] = includes/DataTxtApiService.class.inc
+files[] = includes/DataTxtApiService/DataTxtClassificationService.class.inc
+files[] = includes/DataTxtApiService/DataTxtEntityExtractionService.class.inc
+files[] = includes/DataTXTEntity.class.inc
+files[] = includes/DataTxtApiDB.class.inc
+files[] = includes/DataTxtApiDB/DataTxtApiClassificationDB.class.inc
+files[] = includes/DataTxtApiDB/DataTxtApiEntityExtractionDB.class.inc
+files[] = includes/DataTxtApiDB/DataTxtApiUserInterestsDB.class.inc
+files[] = includes/DataTxtApiUtil.class.inc

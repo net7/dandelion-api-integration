@@ -1,0 +1,114 @@
+.datatxt-preferences-admin input.fluid,
+.datatxt-preferences-admin select {
+    width: 50%;
+}
+
+.datatxt-term-admin .hidden,
+.datatxt-term-admin .progress-disabled {
+    display: none;
+}
+
+.datatxt-term-admin a {
+    cursor:pointer;
+}
+
+.datatxt-term-admin .control-group {
+    margin-bottom: 0;
+}
+
+.datatxt-term-admin .topic.visible {
+    display:block;
+}
+
+.datatxt-term-admin .topic {
+    display:none;
+}
+
+.datatxt-term-admin .topic.active {
+    display:block;
+}
+
+.datatxt-term-admin .fieldset-legend .action-delete {
+    cursor:pointer;
+    float:right;
+    padding-top:0;
+}
+
+.datatxt-term-admin .form-item-search-txt {
+    width: auto;
+    overflow: hidden;
+}
+
+.datatxt-term-admin .form-item-search-btn {
+    overflow:hidden;
+    width:150px;
+    float:right;
+    margin-left:5px;
+}
+
+.datatxt-term-admin .form-type-select {
+    float:left;
+}
+
+.datatxt-term-admin .form-item-result {
+    clear:both;
+    float:none;
+}
+
+.datatxt-term-admin .form-item-result .item {
+    width:auto;
+    float:left;
+    margin: 2px 18px 0 0;
+    padding: 3px;
+    border: 1px solid transparent;
+}
+
+.datatxt-term-admin .form-item-result .item:hover {
+    border: 1px dotted #e0e0e0;
+    background-color:#f0f0f0;
+}
+
+.datatxt-term-admin .form-item-result .item.selected,
+.datatxt-term-admin .form-item-result .item.selected:hover {
+    border: 1px dotted #c6c696;
+    background-color:#f7f7b7;
+}
+
+.datatxt-term-admin .form-item-result .item .uri {
+    font-size:90%;
+}
+
+.datatxt-term-admin .tip {
+    display: none;
+    cursor: pointer;
+    position:absolute;
+    background-color:#fff;
+    border: 1px solid #cecece;
+    padding: 0;
+    width:300px;
+    box-shadow: 1px 1px 12px #888888;
+    border-radius: 4px;
+    z-index: 1003;
+}
+
+.datatxt-term-admin .tip .inner {
+    font-size:90%;
+    padding: 12px;
+    text-align:justify;
+    max-height:200px;
+    overflow-y: auto;
+}
+
+.datatxt-term-admin .tip .inner img {
+    float:left;
+    margin: 0 8px 8px 0;
+    width:75px;
+}
+
+.datatxt-term-admin .score-item {
+    width: 65px !important;
+}
+
+.datatxt-term-admin fieldset#edit-datatxt {
+    margin-top:5px;
+}

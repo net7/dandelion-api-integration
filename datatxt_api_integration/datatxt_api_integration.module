@@ -1,0 +1,567 @@
+<?php
+
+require_once 'datatxt_api_integration.defines.inc';
+
+/**
+ * Implements hook_menu().
+ */
+function datatxt_api_integration_menu() {
+  $items = array();
+  $items['admin/config/datatxt_api_integration'] = array(
+    'title' => 'dataTXT configuration',
+    'position' => 'right',
+    'weight' => -20,
+    'page callback' => 'system_admin_menu_block_page',
+    'access arguments' => array('access administration pages'),
+    'file' => 'system.admin.inc',
+    'file path' => drupal_get_path('module', 'system'),
+  );
+  $items['admin/config/datatxt_api_integration/app_credentials'] = array(
+    'title' => 'dataTXT app credentials',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('datatxt_api_integration_admin_settings_credentials'),
+    'access arguments' => array('access administration pages'),
+    'file' => 'includes/datatxt_api_integration.admin.inc',
+    'type' => MENU_NORMAL_ITEM,
+  );
+  $items['admin/config/datatxt_api_integration/preferences'] = array(
+    'title' => 'dataTXT preferences',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('datatxt_api_integration_admin_settings_preferences'),
+    'access arguments' => array('access administration pages'),
+    'file' => 'includes/datatxt_api_integration.admin.inc',
+    'type' => MENU_NORMAL_ITEM,
+  );
+  return $items;
+}
+
+/**
+ * Implements hook_theme().
+ */
+function datatxt_api_integration_theme($existing, $type, $theme, $path) {
+  // Common base to all elements.
+  $base = array(
+    'path' => $path . '/theme',
+    'file' => 'theme.inc',
+  );
+  return array(
+    'datatxt_wikisearch_item' => array(
+  'template' => 'datatxt-wikisearch-item',
+  'variables' => array('entity' => NULL),
+    ) + $base,
+  );
+}
+
+/**
+ * Implements node_insert().
+ */
+function datatxt_api_integration_node_insert($node) {
+  if ($node->type == 'article') {
+    $dataTxtApiUserInterestsDB = DataTxtApiUserInterestsDB::getInstance();
+    $langcode = $node->language;
+    $wrapper = entity_metadata_wrapper('node', $node);
+    $title = $wrapper->title->value();
+    $body = $wrapper->body->value->value();
+    $content = DataTxtApiUtil::prepareContent($title, $body, 500);
+    $concepts = $dataTxtApiUserInterestsDB->getConcepts($content, $langcode);
+    $dataTxtApiUserInterestsDB->processArticleUserInterests($concepts, $node->nid);
+  }
+}
+
+/**
+ * Implements node_update().
+ */
+function datatxt_api_integration_node_update($node) {
+  // Same features
+  datatxt_api_integration_node_insert($node);
+}
+
+/**
+ * Implements hook_form_vocabulary_alter().
+ */
+function datatxt_api_integration_form_taxonomy_form_vocabulary_alter(&$form, &$form_state, $form_id) {
+  if (!isset($form_state['values']['op']) || strtolower($form_state['values']['op']) != 'delete') {
+
+    $vocabulary_type = 'std';
+    $is_datatxt_taxonomy = FALSE;
+    $is_entity_extraction = FALSE;
+    $is_send_button = FALSE;
+
+    if (isset($form_state['vocabulary']->vid)) {
+      $vid = $form_state['vocabulary']->vid;
+
+      $dataTxtApiClassificationDB = DataTxtApiClassificationDB::getInstance();
+      $is_datatxt_taxonomy = $dataTxtApiClassificationDB->isDataTxt($vid);
+      $dataTxtApiEntityExtractionDB = DataTxtApiEntityExtractionDB::getInstance();
+      $is_entity_extraction = $dataTxtApiEntityExtractionDB->isDataTxt($vid);
+      $dataTxtApiUserInterests = DataTxtApiUserInterestsDB::getInstance();
+      $is_user_interests = $dataTxtApiUserInterests->isDataTxt($vid);
+
+      if ($is_datatxt_taxonomy) {
+        $vocabulary_type = 'tax';
+        $is_send_button = $dataTxtApiClassificationDB->hasVocabularyTerms($vid);
+      }
+      elseif ($is_entity_extraction) {
+        $vocabulary_type = 'ext';
+      }
+      elseif ($is_user_interests) {
+        $vocabulary_type = 'usr';
+        $is_send_button = $dataTxtApiUserInterests->hasVocabularyTerms($vid);
+      }
+    }
+
+    $form['vocabulary_type'] = array(
+      '#type' => 'radios',
+      '#title' => t('Vocabulary type'),
+      '#options' => array(
+        'std' => t('Standard Vocabulary'),
+        'tax' => t('DataTXT Classification'),
+        'usr' => t('DataTXT User Interests'),
+        'ext' => t('DataTXT Entity Extraction'),
+      ),
+      '#description' => t(''),
+      '#default_value' => $vocabulary_type,
+    );
+
+    $form['vocabulary_type_saved'] = array(
+      '#type' => 'hidden',
+      '#value' => $vocabulary_type,
+    );
+
+    if ($is_send_button) {
+      $form['actions']['sendto_datatxt_button'] = array(
+        '#type' => 'submit',
+        '#value' => t('Send to DataTXT'),
+        '#weight' => 50,
+        '#description' => t('Sends terms to DataTXT'),
+        '#submit' => array('datatxt_api_integration_taxonomy_send'),
+      );
+    }
+
+    $form['#submit'][] = 'datatxt_api_integration_taxonomy_submit';
+  }
+}
+
+function datatxt_api_integration_taxonomy_send($form, &$form_state) {
+  $vocabulary_type = $form_state['values']['vocabulary_type'];
+  if ($vocabulary_type == 'tax') {
+    $dataTxtApiClassificationDB = DataTxtApiClassificationDB::getInstance();
+    $dataTxtApiClassificationDB->sendModelsToDataTxt(FALSE);
+  }
+  elseif ($vocabulary_type == 'usr') {
+    $dataTxtApiUserInterestsDB = DataTxtApiUserInterestsDB::getInstance();
+    $dataTxtApiUserInterestsDB->sendModelsToDataTxt(FALSE);
+  }
+}
+
+function datatxt_api_integration_taxonomy_submit(&$form, &$form_state) {
+
+  $vocabulary_type = $form_state['values']['vocabulary_type'];
+  $vocabulary_type_saved = $form_state['values']['vocabulary_type_saved'];
+  $dataTxtApiClassificationDB = DataTxtApiClassificationDB::getInstance();
+  $dataTxtApiEntityExtractionDB = DataTxtApiEntityExtractionDB::getInstance();
+  $dataTxtApiUserInterestsDB = DataTxtApiUserInterestsDB::getInstance();
+  $langcode = $dataTxtApiClassificationDB->getLanguage($form_state);
+
+
+  $machine_name = $form_state['values']['machine_name'];
+  $voc = taxonomy_vocabulary_machine_name_load($machine_name);
+  $vid = $voc->vid;
+
+  if ($vocabulary_type == 'tax') {
+    $dataTxtApiClassificationDB->saveVocabulary($vid, NULL, $langcode);
+  }
+  else if ($vocabulary_type == 'ext') {
+    $dataTxtApiEntityExtractionDB->saveVocabulary($vid);
+  }
+  else if ($vocabulary_type == 'usr') {
+    $dataTxtApiUserInterestsDB->saveVocabulary($vid, NULL, $langcode);
+  }
+  if ($vocabulary_type != $vocabulary_type_saved) {
+    if ($vocabulary_type_saved == 'tax') {
+      $dataTxtApiClassificationDB->deleteVocabulary($vid, $langcode);
+    }
+    else if ($vocabulary_type_saved == 'ext') {
+      $dataTxtApiEntityExtractionDB->deleteVocabulary($vid);
+    }
+    else if ($vocabulary_type_saved == 'usr') {
+      $dataTxtApiUserInterestsDB->deleteVocabulary($vid, $langcode);
+    }
+  }
+}
+
+/**
+ * Implements hook_form_term_alter().
+ */
+function datatxt_api_integration_form_taxonomy_form_term_alter(&$form, &$form_state, $form_id) {
+
+  if (!isset($form_state['triggering_element']) || $form_state['triggering_element']['#id'] != 'edit-delete') {
+
+    if (isset($form['#vocabulary']) && isset($form['#vocabulary']->vid)) {
+      $vid = $form['#vocabulary']->vid;
+    }
+    else {
+      return FALSE;
+    }
+    if (isset($form['#term']) && isset($form['#term']['tid'])) {
+      $tid = $form['#term']['tid'];
+    }
+
+    $dataTxtApiClassificationDB = DataTxtApiClassificationDB::getInstance();
+    $dataTxtApiUserInterestsDB = DataTxtApiUserInterestsDB::getInstance();
+
+    $langcode = $dataTxtApiClassificationDB->getLanguage($form_state);
+
+    if ($dataTxtApiClassificationDB->isDataTxt($vid, $langcode)) {
+      $api = $dataTxtApiClassificationDB;
+      $form_state['values']['wikisearch_options'] = array(
+        'language' => $langcode,
+        'title' => 'DataTXT Classification',
+        'weight' => 10,
+        'defaultScore' => 0.5,
+        'fullMode' => TRUE,
+        'outerCollapsible' => TRUE,
+        'outerCollapsed' => FALSE,
+        'innerCollapsible' => TRUE,
+        'innerCollapsed' => TRUE
+      );
+    }
+    elseif ($dataTxtApiUserInterestsDB->isDataTxt($vid, NULL)) {
+      if (empty($tid)) {
+        drupal_set_message(t('User Interest terms are generated only by system when users select topics from their profile'), 'warning');
+        drupal_goto('admin/structure/taxonomy');
+        return FALSE;
+      }
+      $api = $dataTxtApiUserInterestsDB;
+      $user = $api->getUserByTid($tid);
+      if (empty($user)) {
+        return FALSE;
+      }
+      $langcode = $user->language;
+      $form_state['values']['wikisearch_options'] = array(
+        'language' => $langcode,
+        'title' => 'Interests',
+        'weight' => 10,
+        'defaultScore' => 0.5,
+        'fullMode' => TRUE,
+        'outerCollapsible' => TRUE,
+        'outerCollapsed' => FALSE,
+        'innerCollapsible' => TRUE,
+        'innerCollapsed' => TRUE
+      );
+    }
+    else {
+      return FALSE;
+    }
+    $api->addWikiSearch($form, $form_state);
+    // sistematically prevents form submit due to AJAX calls
+    $form['#validate'][] = 'datatxt_api_integration_wikisearch_taxonomy_validate';
+    $form['#submit'][] = 'datatxt_api_integration_term_submit';
+    return $form;
+  }
+}
+
+function datatxt_api_integration_wikisearch_taxonomy_validate(&$form, &$form_state) {
+  if (preg_match("/^datatxt/", $form_state['triggering_element']['#name'])) {
+    return FALSE;
+  }
+}
+
+function datatxt_api_integration_term_submit($form, &$form_state) {
+  if ($form_state['triggering_element']['#id'] != 'edit-submit') {
+    return FALSE;
+  }
+  if (!isset($form_state['term']->vid) || !isset($form_state['term']->tid)) {
+    return FALSE;
+  }
+  $class_name = $form_state['values']['class_name'];
+  if (!class_exists($class_name)) {
+    return FALSE;
+  }
+  $api = $class_name::getInstance();
+  if (!is_subclass_of($api, 'DataTxtApiDB')) {
+    return FALSE;
+  }
+
+  $vid = $form_state['term']->vid;
+  $tid = $form_state['term']->tid;
+
+  $langcode = $form_state['values']['datatxt_langcode'];
+  $api->deleteTopics($tid, $langcode);
+
+  $count = $form_state['values']['datatxt_maxitems'];
+  for ($i = 0; $i < $count; $i++) {
+    $hasUrl = (!empty($form_state['values']['url_' . $i]));
+    $hasScore = (!empty($form_state['values']['score_' . $i]));
+    if ($hasUrl && $hasScore) {
+      $api->saveTopic(array(
+        'tid' => $tid,
+        'vid' => $vid,
+        'language' => $langcode,
+        'topic' => $form_state['values']['url_' . $i],
+        'score' => floatval($form_state['values']['score_' . $i]),
+      ));
+    }
+  }
+}
+
+/**
+ * Implements hook_form_alter().
+ */
+function datatxt_api_integration_form_alter(&$form, &$form_state, $form_id) {
+  if ($form_id == 'article_node_form' && !empty($form['nid']) && !empty($form['nid']['#value'])) {
+    //Check if the node has some datatxt vocabulary defined
+    $dataTxtApiClassificationDB = DataTxtApiClassificationDB::getInstance();
+    $vocs = $dataTxtApiClassificationDB->hasDataTxtTaxonomy($form['#node']->type);
+    if ($vocs) {
+      $form['actions']['find_datatxt_concepts'] = array(
+        '#type' => 'button',
+        '#value' => t('Find related concepts'),
+        //'#submit' => array('datatxt_api_integration_find_concepts_submit'),
+        '#ajax' => array(
+          'callback' => 'datatxt_api_integration_find_concepts_submit',
+          'method' => 'replace',
+        ),
+      );
+      foreach ($vocs as $field_name => $voc) {
+        $form[$field_name]['#prefix'] = "<div id='datatxt_taxonomy_$field_name'>";
+        $form[$field_name]['#suffix'] = "</div>";
+      }
+      if (variable_get('datatxt_debug_mode', FALSE)) {
+        $form['datatxt_debug_area'] = array(
+          '#markup' => '<p>DEBUG AREA: </p>',
+          '#prefix' => '<div id="datatxt_debug_area">',
+          '#suffix' => '</div>',
+        );
+      }
+    }
+  }
+}
+
+function datatxt_api_integration_find_concepts_submit($form, &$form_state) {
+  global $language;
+  $langcode = $language->language;
+  if (DataTxtApiUtil::isValidLangcode($form['language']['#value'])) {
+    $langcode = $form['language']['#value'];
+  }
+  //Here we call the datatxt find concepts API
+  $title = $form_state['values']['title'];
+  $body = $form_state['values']['body'][LANGUAGE_NONE][0]['value'];
+  $content = DataTxtApiUtil::prepareContent($title, $body, 500);
+  if (variable_get('datatxt_debug_mode', FALSE)) {
+    $form['datatxt_debug_area']['#markup'] .= "<p>Analyzed text: </p>" . $content;
+  }
+  $dataTxtApiClassificationDB = DataTxtApiClassificationDB::getInstance();
+  $dataTxtApiEntityExtractionDB = DataTxtApiEntityExtractionDB::getInstance();
+  $dataTxtClassificationService = DataTxtClassificationService::getInstance();
+  $dataTxtEntityExtractionService = DataTxtEntityExtractionService::getInstance();
+  $vocs = $dataTxtApiClassificationDB->hasDataTxtTaxonomy($form['#node']->type);
+  $commands = array();
+  $classification_min_score = $dataTxtApiClassificationDB->getAPIMinScoreVar();
+  $entity_extraction_min_score = $dataTxtApiEntityExtractionDB->getAPIMinScoreVar();
+  $classified_content = $dataTxtEntityExtractionService->classifyTextContent($content, $langcode, $entity_extraction_min_score);
+  foreach ($vocs as $voc_name => $voc) {
+    $voc_enriched = $dataTxtApiClassificationDB->loadVocabulary($voc->vid, $langcode);
+    if (!empty($voc_enriched)) {
+      $result = $dataTxtClassificationService->classifyHtmlFragmentContent($content, $voc_enriched->datatxt_id, $classification_min_score);
+      if (variable_get('datatxt_debug_mode', FALSE)) {
+        $form['datatxt_debug_area']['#markup'] .= "<p>Classification found for vocabulary: $voc_name - API min. score: <b>$classification_min_score</b></p>" . kpr(DataTxtApiUtil::reconciliateDataTxtNexAndCl($classified_content, $result), TRUE);
+      }
+      //get the first result
+      if (sizeof($result) > 0) {
+        $entity = $result[0];
+        $tax_term = taxonomy_get_term_by_name($entity->getEntityName(), $voc->vid);
+        if (!$tax_term) {
+          $terms = $dataTxtApiClassificationDB->getTermIdByNameAndLanguage($entity->getEntityName(), $langcode);
+          foreach ($terms as $term) {
+            $tax_term = taxonomy_term_load($term->entity_id);
+            if ($tax_term->vid == $voc->vid) {
+              $form[$voc_name][LANGUAGE_NONE]['#value'] = $tax_term->tid;
+              $form[$voc_name][LANGUAGE_NONE]['#default_value'] = array($tax_term->tid);
+              //substitute the relative elements in form..
+              $commands[] = ajax_command_replace('#datatxt_taxonomy_' . $voc_name, drupal_render($form[$voc_name]));
+            }
+          }
+        }
+      }
+    }
+  }
+  if (variable_get('datatxt_debug_mode', FALSE)) {
+    $form['datatxt_debug_area']['#markup'] .= "<p>NEX found for article - API min. score: <b>$entity_extraction_min_score</b></p>" . kpr($classified_content, TRUE);
+    $commands[] = ajax_command_replace('#datatxt_debug_area', drupal_render($form['datatxt_debug_area']));
+  }
+  if (!empty($commands)) {
+    return array('#type' => 'ajax', '#commands' => $commands);
+  }
+  return FALSE;
+}
+
+/**
+ * Implements hook_taxonomy_vocabulary_delete().
+ */
+function datatxt_api_integration_taxonomy_vocabulary_delete($vocabulary) {
+  if (!empty($vocabulary)) {
+    $vid = $vocabulary->vid;
+    $dataTxtApiClassificationDB = DataTxtApiClassificationDB::getInstance();
+    $dataTxtApiClassificationDB->deleteVocabulary($vid);
+    $dataTxtApiEntityExtractionDB = DataTxtApiEntityExtractionDB::getInstance();
+    $dataTxtApiEntityExtractionDB->deleteVocabulary($vid);
+    $dataTxtApiUserInterestsDB = DataTxtApiUserInterestsDB::getInstance();
+    $dataTxtApiUserInterestsDB->deleteVocabulary($vid);
+  }
+}
+
+/**
+ * Implements hook_taxonomy_term_delete().
+ */
+function datatxt_api_integration_taxonomy_term_delete($term) {
+  if (!empty($term)) {
+    $tid = $term->tid;
+    $dataTxtApiClassificationDB = DataTxtApiClassificationDB::getInstance();
+    $dataTxtApiClassificationDB->deleteTopics($tid);
+    $dataTxtApiEntityExtractionDB = DataTxtApiEntityExtractionDB::getInstance();
+    $dataTxtApiEntityExtractionDB->deleteTopics($tid);
+    $dataTxtApiUserInterestsDB = DataTxtApiUserInterestsDB::getInstance();
+    $dataTxtApiUserInterestsDB->deleteTopics($tid);
+  }
+}
+
+/**
+ * Implements hook_node_delete().
+ */
+function datatxt_api_integration_node_delete($node) {
+  $dataTxtApiUserInterestsDB = DataTxtApiUserInterestsDB::getInstance();
+  $dataTxtApiUserInterestsDB->deleteArticleBy('nid', $node->nid);
+}
+
+/**
+ * Implements hook_user_delete().
+ */
+function datatxt_api_integration_user_delete($account) {
+  $dataTxtApiUserInterestsDB = DataTxtApiUserInterestsDB::getInstance();
+  $tid = $dataTxtApiUserInterestsDB->getTidByUserName($account->name);
+  if (!empty($tid)) {
+    $dataTxtApiUserInterestsDB->deleteTopics($tid);
+    $dataTxtApiUserInterestsDB->deleteArticleBy('uid', $account->uid);
+    taxonomy_term_delete($tid);
+  }
+}
+
+/**
+ * Implements hook_form_user_profile_form_alter().
+ */
+function datatxt_api_integration_form_user_profile_form_alter(&$form, &$form_state, $form_id) {
+  if (!isset($form_state['values']['op']) || strtolower($form_state['values']['op']) != 'delete') {
+
+    if (isset($form['#user']) && isset($form['#user']->language)) {
+      $langcode = $form['#user']->language;
+    }
+    else {
+      return FALSE;
+    }
+
+    $api = DataTxtApiUserInterestsDB::getInstance();
+    $form_state['values']['wikisearch_options'] = array(
+      'title' => 'Your interests',
+      'language' => $langcode,
+      'weight' => 50,
+      'defaultScore' => 0.5,
+      'fullMode' => FALSE,
+      'outerCollapsible' => FALSE,
+      'outerCollapsed' => FALSE,
+      'innerCollapsible' => TRUE,
+      'innerCollapsed' => TRUE
+    );
+    $api->addWikiSearch($form, $form_state);
+    // sistematically prevents form submit due to AJAX calls
+    $form['#validate'][] = 'datatxt_api_integration_wikisearch_profile_validate';
+    $form['#submit'][] = 'datatxt_api_integration_profile_submit';
+  }
+}
+
+function datatxt_api_integration_wikisearch_profile_validate(&$form, &$form_state) {
+  if (preg_match("/^datatxt/", $form_state['triggering_element']['#name'])) {
+    return FALSE;
+  }
+  $form['datatxt']['id'] = 'user-profile-form';
+  DataTxtApiDB::addWikiSearchHead();
+}
+
+function datatxt_api_integration_profile_submit(&$form, &$form_state) {
+  if ($form_state['triggering_element']['#id'] != 'edit-submit') {
+    return FALSE;
+  }
+  $user = user_load($form_state['values']['uid']);
+  datatxt_api_integration_save_user_interests($user, $form_state);
+}
+
+/**
+ * Common function to save the user interests from DataTxtApiDB form.
+ *
+ * @param object $user
+ *   The User to update.
+ * @param array $form_state
+ *   The form form_state.
+ */
+function datatxt_api_integration_save_user_interests($user, &$form_state) {
+  $class_name = $form_state['values']['class_name'];
+  if (!class_exists($class_name)) {
+    return;
+  }
+  $api = $class_name::getInstance();
+  if (!is_subclass_of($api, 'DataTxtApiDB')) {
+    return;
+  }
+
+  $langcode = $form_state['values']['datatxt_langcode'];
+
+  $taxonomy_term = new stdClass();
+  $taxonomy_term->vid = $api->getEnabledVocabularyVid();
+  $taxonomy_term->uid = $user->uid;
+  $taxonomy_term->name = $user->name;
+  $taxonomy_term->language = $langcode;
+  $taxonomy_term->format = 'plain_text';
+  $taxonomy_term->description = 'Interests - User id: ' . $taxonomy_term->uid;
+  $taxonomy_term->tid = $api->getTidByUserName($taxonomy_term->name);
+  taxonomy_term_save($taxonomy_term);
+  $api->deleteTopics($taxonomy_term->tid, $langcode);
+  $count = $form_state['values']['datatxt_maxitems'];
+  for ($i = 0; $i < $count; $i++) {
+    $hasUrl = (!empty($form_state['values']['url_' . $i]));
+    $hasScore = (!empty($form_state['values']['score_' . $i]));
+    if ($hasUrl && $hasScore) {
+      $term = array(
+        'tid' => $taxonomy_term->tid,
+        'vid' => $taxonomy_term->vid,
+        'language' => $langcode,
+        'topic' => $form_state['values']['url_' . $i],
+        'score' => floatval($form_state['values']['score_' . $i]),
+      );
+      $api->saveTopic($term);
+    }
+  }
+}
+
+/**
+ * Implements hook_cron().
+ */
+function datatxt_api_integration_cron() {
+  $dataTxtApiClassificationDB = DataTxtApiClassificationDB::getInstance();
+  $dataTxtApiClassificationDB->sendModelsToDataTxt(TRUE);
+  $dataTxtApiUserInterestsDB = DataTxtApiUserInterestsDB::getInstance();
+  $dataTxtApiUserInterestsDB->sendModelsToDataTxt(TRUE);
+}
+
+/**
+ * Implements hook_views_query_alter().
+ */
+function datatxt_api_integration_views_query_alter(&$view, &$query) {
+  if ($view->name == 'articles_user') {
+    $api = DataTxtApiUserInterestsDB::getInstance();
+    $nids = $api->getUserInterestsArticles($view->args[0]);
+    if (empty($nids)) {
+      $nids = array(0);
+    }
+    $query->add_where(10, 'node.nid', $nids, 'IN');
+  }
+}
